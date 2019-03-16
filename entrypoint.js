@@ -13,7 +13,7 @@ async function lint(to, from, convention = '@commitlint/config-conventional') {
 }
 
 async function main() {
-    const {after: to, before: from} = tools.context.payload;
+    const {after: to, before: from} = {after: '73b82b0840b9a8744910f11037e86cd705a8f49c', before: '10300c5d2882b826675fa89c3c26dd8e8234a126'}
     if (!to || !from) {
         tools.log.error('No commit found')
         tools.exit.failure();
