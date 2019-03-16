@@ -4,16 +4,17 @@ const tools = new Toolkit();
 
 async function lint(to, from, convention = '@commitlint/config-conventional') {
     const CMD = 'commitlint'
-    const ARGS = ['-e', `-x ${convention}`]
+    const ARGS = [`-x ${convention}`]
 
     if (to) ARGS.push(`--to ${to}`);
     if (from) ARGS.push(`--from ${from}`);
+    if (!to && !from) ARGS.push('-e');
 
     return tools.runInWorkspace(CMD, ARGS);
 }
 
 async function main() {
-    const {after: from, before: to} = tools.context.payload;
+    const {after: to, before: from} = tools.context.payload;
 
     tools.log('Lint commits:');
     tools.log(`  - To: ${to}`);
@@ -23,6 +24,5 @@ async function main() {
 }
 
 main()
-    .then(tools.exit.success)
     .catch(tools.log.fatal)
     .then(tools.exit.failure)
