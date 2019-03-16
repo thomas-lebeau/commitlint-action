@@ -1,5 +1,5 @@
 const { Toolkit } = require('actions-toolkit');
-const tools = new Toolkit({ event: 'pull_requests' });
+const tools = new Toolkit();
 
 const GIT = 'git';
 const ARGS = ['rev-list', '--simplify-by-decoration', '-2', 'HEAD'];
