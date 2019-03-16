@@ -1,26 +1,22 @@
 const { Toolkit } = require('actions-toolkit');
 const tools = new Toolkit();
 
-const N ='\n';
-const GIT = 'git';
-const GIT_ARGS = ['rev-list', '--simplify-by-decoration', '-2 HEAD'];
-const COMMITLINT = 'commitling'
-const COMMITLINT_ARGS = ['-e', '-x @commitlint/config-conventional']
+async function lint(to, from, convention = '@commitlint/config-conventional') {
+  return tools.runInWorkspace(
+    'commitlint',
+    ['-e', `-x ${convention}` , `--from ${from}`, `--to ${to}`]
+  );
+}
 
-const commits = tools.runInWorkspace(GIT, ...GIT_ARGS);
+async function main() {
+  const {after: to, befor: from} = tools.context.payload;
 
-tools.log(JSON.stringify(tools.context.payload));
-tools.log(tools.context.action);
-tools.log(tools.context.actor);
-tools.log(commits);
+  tools.log('Lint commits:');
+  tools.log(`  - To: ${to}`);
+  tools.log(`  - From: ${from}`);
 
-const [to] = commits;
-const [from] = commits.reverse();
+  const linted = await lint(to, from);
+  tools.log(`linted`);
+}
 
-tools.log('Lint commits:');
-tools.log(`  - To: ${to}`);
-tools.log(`  - From: ${from}`);
-
-tools.runInWorkspace(COMMITLINT, [...COMMITLINT_ARGS, `--from ${from}`, `--to ${to}`]);
-
-tools.log('Done!');
+main();
