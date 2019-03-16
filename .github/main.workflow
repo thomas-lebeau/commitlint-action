@@ -1,4 +1,4 @@
-workflow "Limt" {
+workflow "Lint" {
   on = "push"
   resolves = ["Commitlint"]
 }
