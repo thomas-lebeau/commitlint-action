@@ -9,7 +9,7 @@ async function lint(to, from, convention = '@commitlint/config-conventional') {
 }
 
 async function main() {
-  const {after: to, befor: from} = tools.context.payload;
+  const {after: to, before: from} = tools.context.payload;
 
   tools.log('Lint commits:');
   tools.log(`  - To: ${to}`);
