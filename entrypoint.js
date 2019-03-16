@@ -7,7 +7,13 @@ const GIT_ARGS = ['rev-list', '--simplify-by-decoration', '-2 HEAD'];
 const COMMITLINT = 'commitling'
 const COMMITLINT_ARGS = ['-e', '-x @commitlint/config-conventional']
 
-const commits = tools.runInWorkspace(GIT, ...GIT_ARGS).split(N);
+const commits = tools.runInWorkspace(GIT, ...GIT_ARGS);
+
+tools.log(JSON.stringify(tools.context.payload));
+tools.log(tools.context.action);
+tools.log(tools.context.actor);
+tools.log(commits);
+
 const [to] = commits;
 const [from] = commits.reverse();
 
