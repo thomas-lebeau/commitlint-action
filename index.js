@@ -78,12 +78,7 @@ async function getCommits({ owner, repo, number }) {
 }
 
 async function main() {
-    // const context = tools.context.issue();
-    const context = {
-        owner: 'vadimdemedes',
-        repo: 'ink-text-input',
-        number: 22,
-    };
+    const context = tools.context.issue();
     const commits = await getCommits(context);
     const [to] = commits;
     const [from] = commits.reverse();
