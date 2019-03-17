@@ -50,18 +50,17 @@ async function getCommits({ owner, repo, number }) {
     const commits = [];
     let hasNextPage = false;
     let cursor = '';
-    tools.log(tools.token);
 
     do {
         try {
-            const { prCommits } = await tools.github.graphql(GET_PR_COMMITS, {
+            const a = await tools.github.graphql(GET_PR_COMMITS, {
                 owner,
                 repo,
                 number,
                 cursor,
             });
 
-            tools.log(prCommits);
+            tools.log(a);
         } catch (err) {
             tools.log.fatal(err);
             hasNextPage = false;
@@ -81,8 +80,6 @@ async function main() {
         number: 22,
     };
     const commits = await getCommits(context);
-    tools.log('asd');
-
     tools.log(commits);
 
     // tools.log('Lint commits:');
