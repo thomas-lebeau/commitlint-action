@@ -4,7 +4,7 @@ const tools = new Toolkit();
 const DEFAULT_CONVENTION = '@commitlint/config-conventional';
 const COMMITLINT = 'commitlint';
 const GITHUB_HEADERS = { authorization: tools.token };
-const GET_PR_COMMIT_SHA = /* GraphQL */ `
+const GET_PR_COMMITS = /* GraphQL */ `
     query GetPullRequestCommits(
         $owner: String!
         $repo: String!
@@ -54,7 +54,7 @@ async function getCommits({ owner, repo, number }) {
 
     do {
         try {
-            const response = await tools.github.graphql(GET_PR_COMMIT_SHA, {
+            const response = await tools.github.graphql(GET_PR_COMMITS, {
                 owner,
                 repo,
                 number,
@@ -62,6 +62,8 @@ async function getCommits({ owner, repo, number }) {
                 headers: GITHUB_HEADERS,
             });
 
+            tools.log(tools.token);
+            tools.log(tools.context.issue());
             tools.log(response);
         } catch (err) {
             hasNextPage = false;
