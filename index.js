@@ -3,9 +3,8 @@ const tools = new Toolkit();
 
 const DEFAULT_CONVENTION = '@commitlint/config-conventional';
 const COMMITLINT = 'commitlint';
-const GITHUB_HEADERS = { authorization: tools.token };
 const GET_PR_COMMITS = /* GraphQL */ `
-    query GetPullRequestCommits(
+    query prCommits(
         $owner: String!
         $repo: String!
         $number: Int!
@@ -51,21 +50,20 @@ async function getCommits({ owner, repo, number }) {
     const commits = [];
     let hasNextPage = false;
     let cursor = '';
+    tools.log(tools.token);
 
     do {
         try {
-            const response = await tools.github.graphql(GET_PR_COMMITS, {
+            const { prCommits } = await tools.github.graphql(GET_PR_COMMITS, {
                 owner,
                 repo,
                 number,
                 cursor,
-                headers: GITHUB_HEADERS,
             });
 
-            tools.log(tools.token);
-            tools.log(tools.context.issue());
-            tools.log(response);
+            tools.log(prCommits);
         } catch (err) {
+            tools.log.fatal(err);
             hasNextPage = false;
         }
     } while (hasNextPage);
@@ -83,6 +81,7 @@ async function main() {
         number: 22,
     };
     const commits = await getCommits(context);
+    tools.log('asd');
 
     tools.log(commits);
 
