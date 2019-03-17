@@ -13,7 +13,7 @@ const GET_PR_COMMITS = /* GraphQL */ `
         $repo: String!
         $number: Int!
         $cursor: String
-        $pageSize: Int = 2
+        $pageSize: Int = 30
     ) {
         repository(owner: $owner, name: $repo) {
             pullRequest(number: $number) {
@@ -81,7 +81,7 @@ async function getCommits({ owner, repo, number } = tools.context.issue()) {
 
 async function main() {
     let count = 1;
-    // TO do fallback to current commit
+
     if (isPullRequest()) {
         const commits = await getCommits();
         const [to] = commits;
@@ -97,5 +97,5 @@ async function main() {
 }
 
 tools.log(tools.context.issue());
-tools.log(tools.context.payload);
+tools.log(tools.context);
 main();
