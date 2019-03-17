@@ -1,20 +1,21 @@
 const { Toolkit } = require('actions-toolkit');
+const get = require('lodash.get');
 const tools = new Toolkit();
 
 const DEFAULT_CONVENTION = '@commitlint/config-conventional';
 const COMMITLINT = 'commitlint';
+const COMMITS_PAGE_PATH = 'repository.pullRequest.commits.pageInfo';
+const COMMITS_PATH = 'repository.pullRequest.commits.nodes';
 const GET_PR_COMMITS = /* GraphQL */ `
-    query prCommits(
+    query(
         $owner: String!
         $repo: String!
         $number: Int!
         $cursor: String
-        $pageSize: Int = 1
+        $pageSize: Int = 2
     ) {
         repository(owner: $owner, name: $repo) {
-            name
             pullRequest(number: $number) {
-                id
                 commits(first: $pageSize, after: $cursor) {
                     totalCount
                     pageInfo {
@@ -24,7 +25,8 @@ const GET_PR_COMMITS = /* GraphQL */ `
                     nodes {
                         commit {
                             message
-                            oid
+                            sha: oid
+                            shortSha: abbreviatedOid
                         }
                     }
                 }
@@ -53,14 +55,19 @@ async function getCommits({ owner, repo, number }) {
 
     do {
         try {
-            const a = await tools.github.graphql(GET_PR_COMMITS, {
+            const response = await tools.github.graphql(GET_PR_COMMITS, {
                 owner,
                 repo,
                 number,
                 cursor,
             });
 
-            tools.log(a);
+            const pageInfo = get(response, COMMITS_PAGE_PATH);
+            const nodes = get(response, COMMITS_PATH);
+
+            cursor = pageInfo.endCursor;
+            hasNextPage = pageInfo.hasNextPage;
+            commits.push(...nodes.map(c => c.commit).filter(Boolean));
         } catch (err) {
             tools.log.fatal(err);
             hasNextPage = false;
@@ -71,8 +78,6 @@ async function getCommits({ owner, repo, number }) {
 }
 
 async function main() {
-    let to, from;
-
     // const context = tools.context.issue();
     const context = {
         owner: 'vadimdemedes',
@@ -80,14 +85,15 @@ async function main() {
         number: 22,
     };
     const commits = await getCommits(context);
-    tools.log(commits);
+    const [to] = commits;
+    const [from] = commits.reverse();
 
-    // tools.log('Lint commits:');
-    // tools.log(`  - To: ${to}`);
-    // tools.log(`  - From: ${from}`);
+    tools.log('Lint commits:');
+    tools.log(`  - To: ${to.shortSha} - ${to.message}`);
+    tools.log(`  - From: ${from.shortSha} - ${from.message}`);
 
     try {
-        const linted = await lint(to, from);
+        const linted = await lint(to.sha, from.sha);
     } catch (err) {
         tools.log.fatal(err);
         tools.exit.failure(err.message);
