@@ -35,6 +35,10 @@ const GET_PR_COMMITS = /* GraphQL */ `
     }
 `;
 
+function isPullRequest({ number } = tools.context.issue()) {
+    return Number.isInteger(number);
+}
+
 async function lint(to, from, convention = DEFAULT_CONVENTION) {
     if (!to || !from) {
         throw new Error('No commit found');
@@ -48,7 +52,7 @@ async function lint(to, from, convention = DEFAULT_CONVENTION) {
     return tools.runInWorkspace(COMMITLINT, args);
 }
 
-async function getCommits({ owner, repo, number }) {
+async function getCommits({ owner, repo, number } = tools.context.issue()) {
     const commits = [];
     let hasNextPage = false;
     let cursor = '';
@@ -70,7 +74,7 @@ async function getCommits({ owner, repo, number }) {
             commits.push(...nodes.map(c => c.commit).filter(Boolean));
         } catch (err) {
             tools.log.fatal(err);
-            hasNextPage = false;
+            tools.exit.failure(err.message);
         }
     } while (hasNextPage);
 
@@ -78,8 +82,9 @@ async function getCommits({ owner, repo, number }) {
 }
 
 async function main() {
-    const context = tools.context.issue();
-    const commits = await getCommits(context);
+    if (!isPullRequest()) tools.exit('Not a pull request; skipping.');
+
+    const commits = await getCommits();
     const [to] = commits;
     const [from] = commits.reverse();
 
