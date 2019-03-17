@@ -43,7 +43,7 @@ async function lint(to = HEAD, from = HEAD, convention = DEFAULT_CONVENTION) {
     const args = [`-x ${convention}`, `--to ${to}`, `--from ${from}`];
 
     try {
-        return tools.runInWorkspace(COMMITLINT, args);
+        return await tools.runInWorkspace(COMMITLINT, args);
     } catch (err) {
         tools.log.fatal(err);
         tools.exit.failure(err.message);
@@ -96,4 +96,6 @@ async function main() {
     tools.exit.success(`Linted ${count} commit${count > 1 ? 's' : ''}`);
 }
 
+tools.log(tools.context.issue());
+tools.log(tools.context.payload);
 main();
