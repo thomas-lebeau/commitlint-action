@@ -40,10 +40,7 @@ function isPullRequest({ number } = tools.context.issue()) {
 }
 
 async function lint(to = HEAD, from = HEAD, convention = DEFAULT_CONVENTION) {
-    const args = [`-x ${convention}`];
-
-    if (to) args.push(`--to ${to}`);
-    if (from) args.push(`--from ${from}`);
+    const args = [`-x ${convention}`, `--to ${to}`, `--from ${from}`];
 
     try {
         return tools.runInWorkspace(COMMITLINT, args);
