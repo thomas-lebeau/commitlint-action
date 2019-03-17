@@ -2,6 +2,7 @@ const { Toolkit } = require('actions-toolkit');
 const get = require('lodash.get');
 const tools = new Toolkit();
 
+const HEAD = 'HEAD';
 const DEFAULT_CONVENTION = '@commitlint/config-conventional';
 const COMMITLINT = 'commitlint';
 const COMMITS_PAGE_PATH = 'repository.pullRequest.commits.pageInfo';
@@ -17,7 +18,6 @@ const GET_PR_COMMITS = /* GraphQL */ `
         repository(owner: $owner, name: $repo) {
             pullRequest(number: $number) {
                 commits(first: $pageSize, after: $cursor) {
-                    totalCount
                     pageInfo {
                         hasNextPage
                         endCursor
@@ -39,17 +39,18 @@ function isPullRequest({ number } = tools.context.issue()) {
     return Number.isInteger(number);
 }
 
-async function lint(to, from, convention = DEFAULT_CONVENTION) {
-    if (!to || !from) {
-        throw new Error('No commit found');
-    }
-
+async function lint(to = HEAD, from = HEAD, convention = DEFAULT_CONVENTION) {
     const args = [`-x ${convention}`];
 
     if (to) args.push(`--to ${to}`);
     if (from) args.push(`--from ${from}`);
 
-    return tools.runInWorkspace(COMMITLINT, args);
+    try {
+        return tools.runInWorkspace(COMMITLINT, args);
+    } catch (err) {
+        tools.log.fatal(err);
+        tools.exit.failure(err.message);
+    }
 }
 
 async function getCommits({ owner, repo, number } = tools.context.issue()) {
@@ -82,24 +83,19 @@ async function getCommits({ owner, repo, number } = tools.context.issue()) {
 }
 
 async function main() {
-    if (!isPullRequest()) tools.exit.neutral('Not a pull request; skipping.');
+    let count = 1;
+    // TO do fallback to current commit
+    if (isPullRequest()) {
+        const commits = await getCommits();
+        const [to] = commits;
+        const [from] = commits.reverse();
+        count = commits.length;
 
-    const commits = await getCommits();
-    const [to] = commits;
-    const [from] = commits.reverse();
-
-    tools.log('Lint commits:');
-    tools.log(`  - To: ${to.shortSha} - ${to.message}`);
-    tools.log(`  - From: ${from.shortSha} - ${from.message}`);
-
-    try {
-        const linted = await lint(to.sha, from.sha);
-    } catch (err) {
-        tools.log.fatal(err);
-        tools.exit.failure(err.message);
+        await lint(to.sha, from.sha);
+    } else {
+        await lint();
     }
 
-    const count = 2;
     tools.exit.success(`Linted ${count} commit${count > 1 ? 's' : ''}`);
 }
 
