@@ -82,7 +82,7 @@ async function getCommits({ owner, repo, number } = tools.context.issue()) {
 }
 
 async function main() {
-    if (!isPullRequest()) tools.exit('Not a pull request; skipping.');
+    if (!isPullRequest()) tools.exit.neutral('Not a pull request; skipping.');
 
     const commits = await getCommits();
     const [to] = commits;
