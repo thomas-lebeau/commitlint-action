@@ -5,6 +5,7 @@ LABEL "com.github.actions.description"="Lint your commit messages"
 LABEL "com.github.actions.icon"="check-circle"
 LABEL "com.github.actions.color"="gray-dark"
 
-RUN npm install --global commitlint @commitlint/config-conventional
+COPY . .
+RUN npm ci
 
-ENTRYPOINT ["commitlint", "-e", "-x", "@commitlint/config-conventional"]
+ENTRYPOINT ["node", "/index.js"]
