@@ -2,20 +2,19 @@ const { Toolkit } = require('actions-toolkit');
 const tools = new Toolkit();
 const load = require('@commitlint/load');
 const read = require('@commitlint/read');
-const lint = require('@commitlint/lint');
+const _lint = require('@commitlint/lint');
 const format = require('@commitlint/format');
 
 const HEAD = 'HEAD';
 const BASE_BRANCH = 'master';
 const DEFAULT_CONVENTION = '@commitlint/config-conventional';
 
-async function _lint(from = 'HEAD~1', to = 'HEAD') {
-    const { rules } = await load({ extends: [DEFAULT_CONVENTION] });
-    const messages = await read({ from, to });
+async function lint(range, { rules }) {
+    const messages = await read(range);
     const results = [];
 
     for await (const message of messages) {
-        const report = await lint(message, rules);
+        const report = await _lint(message, rules);
 
         results.push(report);
     }
@@ -25,8 +24,11 @@ async function _lint(from = 'HEAD~1', to = 'HEAD') {
 
 async function getCommitsFromGitLog() {
     try {
-        const args = ['log', `${BASE_BRANCH}..${HEAD}`, '--format=%H'];
-        const result = await tools.runInWorkspace('git', args);
+        const result = await tools.runInWorkspace('git', [
+            'log',
+            `${BASE_BRANCH}..${HEAD}`,
+            '--format=%H',
+        ]);
         const commits = result.stdout || '';
 
         return commits
@@ -45,27 +47,39 @@ async function getCommitsFromPushEvent() {
 }
 
 async function getCommits() {
-    let commits = getCommitsFromGitLog();
+    let commits = await getCommitsFromGitLog();
 
     if (!commits.length) {
         commits = getCommitsFromPushEvent();
     }
+
+    const lastSha = commits[commits.length - 1];
+    const { stdout } = await tools.runInWorkspace('git', [
+        'log',
+        '--format=%P',
+        lastSha,
+    ]);
+    const [parentSha] = stdout.split('\n');
+
+    commits.push(parentSha);
 
     return commits;
 }
 
 async function main() {
     const commits = await getCommits();
+
     let results;
 
-    if (commits.length) {
-        const [to] = commits;
-        const [from] = commits.reverse();
-
-        results = await _lint(from, to);
-    } else {
-        results = await _lint();
+    if (!commits.length) {
+        tools.exit.failure('No commit found, abord.');
     }
+
+    const [to] = commits;
+    const [from] = commits.reverse();
+    const config = await load({ extends: [DEFAULT_CONVENTION] });
+
+    results = await lint({ from, to }, config);
 
     const count = results.length;
     const hasErrors = results.some(({ valid }) => !valid);
