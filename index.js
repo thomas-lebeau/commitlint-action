@@ -1,39 +1,50 @@
 const { Toolkit } = require('actions-toolkit');
 const tools = new Toolkit();
+const load = require('@commitlint/load');
+const read = require('@commitlint/read');
+const lint = require('@commitlint/lint');
+const format = require('@commitlint/format');
 
 const HEAD = 'HEAD';
 const BASE_BRANCH = 'master';
 const DEFAULT_CONVENTION = '@commitlint/config-conventional';
 
-async function lint(to = HEAD, from = HEAD, convention = DEFAULT_CONVENTION) {
-    const args = [`-x ${convention}`, `--to ${to}`, `--from ${from}`];
+async function _lint(from = 'HEAD~1', to = 'HEAD') {
+    const { rules } = await load({ extends: [DEFAULT_CONVENTION] });
+    const messages = await read({ from, to });
+    const results = [];
 
-    try {
-        return await tools.runInWorkspace('commitlint', args);
-    } catch (err) {
-        tools.log.fatal(err);
-        tools.exit.failure(err.message);
+    for await (const message of messages) {
+        const report = await lint(message, rules);
+
+        results.push(report);
     }
+
+    tools.log(format({ results }));
+
+    return {
+        count: results.length,
+        valid: results.every(({ valid }) => valid),
+    };
 }
 
 async function getCommitsFromGitLog() {
-    const args = ['log', `${BASE_BRANCH}..${HEAD}`, '--format=%H'];
-    let commits = [];
-
     try {
-        commits = await tools.runInWorkspace('git', args);
+        const args = ['log', `${BASE_BRANCH}..${HEAD}`, '--format=%H'];
+        const result = await tools.runInWorkspace('git', args);
+        const commits = result.stdout || '';
+
+        return commits
+            .split('\n')
+            .map(commit => commit.trim())
+            .filter(Boolean);
     } catch (err) {
         tools.log.fatal(err);
     }
-
-    return commits
-        .split('\n')
-        .map(commit => commit.trim())
-        .filter(Boolean);
 }
 
 async function getCommitsFromPushEvent() {
-    const { commits } = tools.context.payload;
+    const { commits = [] } = tools.context.payload;
 
     return commits.filter(Boolean).map(commit => commit.sha);
 }
@@ -49,22 +60,24 @@ async function getCommits() {
 }
 
 async function main() {
-    let count = 0;
-
     const commits = await getCommits();
+    let result;
+
     if (commits.length) {
         const [to] = commits;
         const [from] = commits.reverse();
-        count = commits.length;
 
-        await lint(to, from);
+        result = await _lint(from, to);
     } else {
-        count = 1;
-
-        await lint();
+        result = await _lint();
     }
 
-    tools.exit.success(`Linted ${count} commit${count > 1 ? 's' : ''}`);
+    const { count, valid } = result;
+
+    if (valid)
+        tools.exit.success(`Linted ${count} commit${count > 1 ? 's' : ''}`);
+
+    tools.exit.failure(`Linted ${count} commit${count > 1 ? 's' : ''}`);
 }
 
 main();
