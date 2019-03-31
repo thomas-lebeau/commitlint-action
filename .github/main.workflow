@@ -4,6 +4,6 @@ workflow "Lint" {
 }
 
 action "Commitlint" {
-  uses = "thomas-lebeau/commitlint-action@master"
+  uses = "./"
   secrets = ["GITHUB_TOKEN"]
 }

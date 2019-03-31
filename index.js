@@ -1,101 +1,70 @@
 const { Toolkit } = require('actions-toolkit');
-const get = require('lodash.get');
 const tools = new Toolkit();
 
 const HEAD = 'HEAD';
+const BASE_BRANCH = 'master';
 const DEFAULT_CONVENTION = '@commitlint/config-conventional';
-const COMMITLINT = 'commitlint';
-const COMMITS_PAGE_PATH = 'repository.pullRequest.commits.pageInfo';
-const COMMITS_PATH = 'repository.pullRequest.commits.nodes';
-const GET_PR_COMMITS = /* GraphQL */ `
-    query(
-        $owner: String!
-        $repo: String!
-        $number: Int!
-        $cursor: String
-        $pageSize: Int = 30
-    ) {
-        repository(owner: $owner, name: $repo) {
-            pullRequest(number: $number) {
-                commits(first: $pageSize, after: $cursor) {
-                    pageInfo {
-                        hasNextPage
-                        endCursor
-                    }
-                    nodes {
-                        commit {
-                            message
-                            sha: oid
-                            shortSha: abbreviatedOid
-                        }
-                    }
-                }
-            }
-        }
-    }
-`;
-
-function isPullRequest({ number } = tools.context.issue()) {
-    return Number.isInteger(number);
-}
 
 async function lint(to = HEAD, from = HEAD, convention = DEFAULT_CONVENTION) {
     const args = [`-x ${convention}`, `--to ${to}`, `--from ${from}`];
 
     try {
-        return await tools.runInWorkspace(COMMITLINT, args);
+        return await tools.runInWorkspace('commitlint', args);
     } catch (err) {
         tools.log.fatal(err);
         tools.exit.failure(err.message);
     }
 }
 
-async function getCommits({ owner, repo, number } = tools.context.issue()) {
-    const commits = [];
-    let hasNextPage = false;
-    let cursor = '';
+async function getCommitsFromGitLog() {
+    const args = ['log', `${BASE_BRANCH}..${HEAD}`, '--format=%H'];
+    let commits = [];
 
-    do {
-        try {
-            const response = await tools.github.graphql(GET_PR_COMMITS, {
-                owner,
-                repo,
-                number,
-                cursor,
-            });
+    try {
+        commits = await tools.runInWorkspace('git', args);
+    } catch (err) {
+        tools.log.fatal(err);
+    }
 
-            const pageInfo = get(response, COMMITS_PAGE_PATH);
-            const nodes = get(response, COMMITS_PATH);
+    return commits
+        .split('\n')
+        .map(commit => commit.trim())
+        .filter(Boolean);
+}
 
-            cursor = pageInfo.endCursor;
-            hasNextPage = pageInfo.hasNextPage;
-            commits.push(...nodes.map(c => c.commit).filter(Boolean));
-        } catch (err) {
-            tools.log.fatal(err);
-            tools.exit.failure(err.message);
-        }
-    } while (hasNextPage);
+async function getCommitsFromPushEvent() {
+    const { commits } = tools.context.payload;
+
+    return commits.filter(Boolean).map(commit => commit.sha);
+}
+
+async function getCommits() {
+    let commits = getCommitsFromGitLog();
+
+    if (!commits.length) {
+        commits = getCommitsFromPushEvent();
+    }
 
     return commits;
 }
 
 async function main() {
-    let count = 1;
+    let count = 0;
 
-    if (isPullRequest()) {
-        const commits = await getCommits();
+    const commits = await getCommits();
+    if (commits.length) {
         const [to] = commits;
         const [from] = commits.reverse();
         count = commits.length;
 
-        await lint(to.sha, from.sha);
+        await lint(to, from);
     } else {
+        count = 1;
+
         await lint();
     }
 
     tools.exit.success(`Linted ${count} commit${count > 1 ? 's' : ''}`);
 }
 
-tools.log(tools.context.issue());
-tools.log(tools.context);
 main();

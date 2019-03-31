@@ -1,18 +1,17 @@
 {
-  "name": "commitlint-action",
-  "private": true,
-  "main": "index.js",
-  "dependencies": {
-    "@commitlint/cli": "^7.5.2",
-    "@commitlint/config-conventional": "^7.5.0",
-    "actions-toolkit": "^1.5.0",
-    "lodash.get": "^4.4.2"
-  },
-  "devDependencies": {
-    "prettier": "^1.16.4"
-  },
-  "prettier": {
-    "singleQuote": true,
-    "trailingComma": "es5"
-  }
+    "name": "commitlint-action",
+    "private": true,
+    "main": "index.js",
+    "dependencies": {
+        "@commitlint/cli": "^7.5.2",
+        "@commitlint/config-conventional": "^7.5.0",
+        "actions-toolkit": "^1.10.0"
+    },
+    "devDependencies": {
+        "prettier": "^1.16.4"
+    },
+    "prettier": {
+        "singleQuote": true,
+        "trailingComma": "es5"
+    }
 }
