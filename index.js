@@ -20,12 +20,7 @@ async function _lint(from = 'HEAD~1', to = 'HEAD') {
         results.push(report);
     }
 
-    tools.log(format({ results }));
-
-    return {
-        count: results.length,
-        valid: results.every(({ valid }) => valid),
-    };
+    return results;
 }
 
 async function getCommitsFromGitLog() {
@@ -61,23 +56,27 @@ async function getCommits() {
 
 async function main() {
     const commits = await getCommits();
-    let result;
+    let results;
 
     if (commits.length) {
         const [to] = commits;
         const [from] = commits.reverse();
 
-        result = await _lint(from, to);
+        results = await _lint(from, to);
     } else {
-        result = await _lint();
+        results = await _lint();
     }
 
-    const { count, valid } = result;
+    const count = results.length;
+    const hasErrors = results.some(({ valid }) => !valid);
 
-    if (valid)
-        tools.exit.success(`Linted ${count} commit${count > 1 ? 's' : ''}`);
+    if (hasErrors) {
+        const report = format({ results });
 
-    tools.exit.failure(`Linted ${count} commit${count > 1 ? 's' : ''}`);
+        tools.exit.failure(report);
+    }
+
+    tools.exit.success(`Linted ${count} commit${count > 1 ? 's' : ''}`);
 }
 
 main();
